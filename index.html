@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoTube Studio | Shorts Automation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#fff1f2',
+                            100: '#ffe4e6',
+                            500: '#ef4444',
+                            600: '#dc2626',
+                            700: '#b91c1c',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+        .glass-card { background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .glass-card-hover { transition: all 0.25s ease-in-out; }
+        .glass-card-hover:hover { border-color: rgba(239, 68, 68, 0.3); transform: translateY(-2px); }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased flex flex-col relative overflow-x-hidden">
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- TOP HEADER -->
+    <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40 h-16 flex items-center justify-between px-6">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-tr from-red-600 to-red-500 text-white rounded-xl flex items-center justify-center shadow-lg shadow-red-600/20">
+                <i class="fa-brands fa-youtube text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-wide bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent leading-none">
+                    AutoTube<span class="text-red-500">.</span>Studio
+                </h1>
+                <span class="text-[10px] text-slate-500 font-mono tracking-wider">v2.4 NEXT-GEN AUTOMATION</span>
+            </div>
+        </div>
+
+        <div id="user-badge" class="hidden flex items-center gap-4">
+            <div class="flex items-center gap-2 bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-full">
+                <span class="relative flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span id="user-email-display" class="text-xs text-slate-300 font-mono"></span>
+            </div>
+            <button onclick="logout()" class="text-xs bg-slate-900 hover:bg-red-500/10 text-slate-400 hover:text-red-400 border border-slate-800 hover:border-red-500/30 px-3.5 py-1.5 rounded-xl transition-all font-medium flex items-center gap-2">
+                <i class="fa-solid fa-right-from-bracket text-xs"></i> Logout
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN BODY WRAPPER -->
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- SIDEBAR NAVIGATION -->
+        <aside id="app-sidebar" class="hidden w-64 border-r border-slate-800/80 bg-slate-950 p-4 flex flex-col justify-between">
+            <div class="space-y-6">
+                <div>
+                    <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-3">Core Platform</div>
+                    <nav class="space-y-1.5">
+                        <button onclick="switchTab('overview')" id="nav-overview" class="tab-nav-btn active w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-slate-100 hover:bg-slate-900/80">
+                            <i class="fa-solid fa-chart-line w-4 text-center"></i> Overview
+                        </button>
+                        <button onclick="switchTab('tasks')" id="nav-tasks" class="tab-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-slate-100 hover:bg-slate-900/80">
+                            <i class="fa-solid fa-rocket w-4 text-center"></i> Task Launcher
+                        </button>
+                        <button onclick="switchTab('queue')" id="nav-queue" class="tab-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-slate-100 hover:bg-slate-900/80">
+                            <i class="fa-solid fa-terminal w-4 text-center"></i> Queue & Logs
+                        </button>
+                    </nav>
+                </div>
+
+                <div>
+                    <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-3">Preferences</div>
+                    <nav class="space-y-1.5">
+                        <button onclick="switchTab('settings')" id="nav-settings" class="tab-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-slate-100 hover:bg-slate-900/80">
+                            <i class="fa-solid fa-sliders w-4 text-center"></i> Settings & Profile
+                        </button>
+                    </nav>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-4 text-xs">
+                <div class="flex items-center justify-between text-slate-400 mb-2">
+                    <span class="font-medium text-[11px]">System Status</span>
+                    <span class="inline-flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px]">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Active
+                    </span>
+                </div>
+                <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-800">
+                    <div class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full w-full"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CONTENT CONTAINER -->
+        <main class="flex-1 p-6 md:p-8 overflow-y-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-slate-950 to-slate-950">
+
+            <!-- ================= AUTHENTICATION CONTAINER ================= -->
+            <div id="auth-section" class="max-w-md mx-auto my-12 glass-card rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+                <div class="absolute -top-24 -right-24 w-48 h-48 bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <!-- 1. LOGIN / SIGNUP FORM -->
+                <div id="auth-form-card">
+                    <div class="text-center mb-8">
+                        <div class="w-14 h-14 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-red-500/10">
+                            <i class="fa-solid fa-shield-halved text-2xl"></i>
+                        </div>
+                        <h2 id="auth-title" class="text-2xl font-bold tracking-tight">Welcome Back</h2>
+                        <p id="auth-subtitle" class="text-slate-400 text-xs mt-1.5">Enter your credentials to access your console</p>
+                    </div>
+
+                    <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
+                        <div id="name-field-wrapper" class="hidden">
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Full Name</label>
+                            <input type="text" id="auth-name" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition" placeholder="John Doe">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Email Address</label>
+                            <input type="email" id="auth-email" required class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition" placeholder="name@example.com">
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Password</label>
+                            <input type="password" id="auth-password" required class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition" placeholder="••••••••">
+                        </div>
+
+                        <div id="confirm-password-wrapper" class="hidden">
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Confirm Password</label>
+                            <input type="password" id="auth-confirm-password" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition" placeholder="••••••••">
+                        </div>
+
+                        <button type="submit" id="auth-submit-btn" class="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-600 font-semibold py-3 rounded-xl transition-all shadow-lg shadow-red-600/25 text-sm mt-3 flex items-center justify-center gap-2">
+                            <span>Login</span>
+                        </button>
+                    </form>
+
+                    <div class="text-center mt-6 pt-6 border-t border-slate-800/80">
+                        <button onclick="toggleAuthMode()" id="auth-toggle-btn" class="text-xs text-slate-400 hover:text-white transition">
+                            Don't have an account? <span class="text-red-400 font-semibold">Sign Up</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. EMAIL OTP VERIFICATION -->
+                <div id="otp-verify-card" class="hidden">
+                    <div class="text-center mb-6">
+                        <div class="w-14 h-14 bg-sky-500/10 border border-sky-500/20 text-sky-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <i class="fa-solid fa-envelope-circle-check text-2xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold tracking-tight">Verify Email</h2>
+                        <p class="text-slate-400 text-xs mt-1">We sent a confirmation code to <br><b id="otp-target-email" class="text-slate-200"></b></p>
+                    </div>
+
+                    <form onsubmit="verifyOTP(event)" class="space-y-5">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 text-center">Enter Verification Code</label>
+                            <div class="flex justify-between gap-1.5" id="otp-boxes-container">
+                                <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-lg font-mono font-bold bg-slate-950/80 border border-slate-800 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" required />
+                                <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-lg font-mono font-bold bg-slate-950/80 border border-slate-800 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" required />
+                                <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-lg font-mono font-bold bg-slate-950/80 border border-slate-800 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" required />
+                                <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-lg font-mono font-bold bg-slate-950/80 border border-slate-800 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" required />
+                                <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-lg font-mono font-bold bg-slate-950/80 border border-slate-800 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" required />
+                                <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-lg font-mono font-bold bg-slate-950/80 border border-slate-800 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" required />
+                                <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-lg font-mono font-bold bg-slate-950/80 border border-slate-800 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" required />
+                                <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-lg font-mono font-bold bg-slate-950/80 border border-slate-800 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" required />
+                            </div>
+                        </div>
+
+                        <div class="text-center text-xs font-mono text-slate-400 py-1">
+                            Code expires in: <span id="timer-display" class="text-amber-400 font-bold">01:00</span>
+                        </div>
+
+                        <button type="submit" id="verify-btn" class="w-full bg-sky-600 hover:bg-sky-500 font-semibold py-3 rounded-xl transition-all shadow-lg shadow-sky-600/20 text-sm">
+                            Confirm & Complete
+                        </button>
+                    </form>
+
+                    <div class="text-center mt-4">
+                        <button id="resend-btn" onclick="resendOTP()" disabled class="text-xs text-slate-500 hover:text-sky-400 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                            Didn't receive code? <span class="underline">Resend OTP</span>
+                        </button>
+                    </div>
+
+                    <div class="text-center mt-6 pt-4 border-t border-slate-800/80">
+                        <button onclick="backToAuth()" class="text-xs text-slate-400 hover:text-white transition flex items-center justify-center gap-2 mx-auto">
+                            <i class="fa-solid fa-arrow-left text-[10px]"></i> Back to Register
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ================= MULTI-TAB DASHBOARD AREA ================= -->
+            <div id="dashboard-section" class="hidden space-y-8 max-w-7xl mx-auto">
+                
+                <!-- TAB 1: OVERVIEW -->
+                <div id="tab-overview" class="tab-content space-y-6">
+                    <div id="welcome-banner" class="glass-card rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-2xl">
+                        <div class="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-red-600/10 via-transparent to-transparent pointer-events-none"></div>
+                        <div class="relative z-10">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-1 rounded-full inline-block mb-3">Automation Control Center</span>
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                                Welcome back, <span id="welcome-user-name" class="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">User</span> 👋
+                            </h2>
+                            <p class="text-slate-400 text-xs md:text-sm mt-1 max-w-xl">Shorts Automation Bot active hai. Neeche live analytics aur campaign performance monitor karein.</p>
+                        </div>
+                    </div>
+
+                    <!-- Metric Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                        <div class="glass-card glass-card-hover p-5 rounded-2xl">
+                            <div class="flex items-center justify-between text-slate-400 mb-4">
+                                <span class="text-xs font-semibold uppercase tracking-wider">Total Campaigns</span>
+                                <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300">
+                                    <i class="fa-solid fa-layer-group text-sm"></i>
+                                </div>
+                            </div>
+                            <div id="stat-total" class="text-3xl font-extrabold text-white tracking-tight">0</div>
+                            <div class="mt-2 text-[11px] text-slate-500 font-medium">All-time campaigns created</div>
+                        </div>
+
+                        <div class="glass-card glass-card-hover p-5 rounded-2xl">
+                            <div class="flex items-center justify-between text-slate-400 mb-4">
+                                <span class="text-xs font-semibold uppercase tracking-wider">In Progress</span>
+                                <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                                    <i class="fa-solid fa-spinner text-sm animate-spin"></i>
+                                </div>
+                            </div>
+                            <div id="stat-running" class="text-3xl font-extrabold text-amber-400 tracking-tight">0</div>
+                            <div class="mt-2 text-[11px] text-amber-500/80 font-medium">Currently executing</div>
+                        </div>
+
+                        <div class="glass-card glass-card-hover p-5 rounded-2xl">
+                            <div class="flex items-center justify-between text-slate-400 mb-4">
+                                <span class="text-xs font-semibold uppercase tracking-wider">Completed</span>
+                                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                    <i class="fa-solid fa-circle-check text-sm"></i>
+                                </div>
+                            </div>
+                            <div id="stat-completed" class="text-3xl font-extrabold text-emerald-400 tracking-tight">0</div>
+                            <div class="mt-2 text-[11px] text-emerald-500/80 font-medium">Successfully finished</div>
+                        </div>
+
+                        <div class="glass-card glass-card-hover p-5 rounded-2xl">
+                            <div class="flex items-center justify-between text-slate-400 mb-4">
+                                <span class="text-xs font-semibold uppercase tracking-wider">Views Delivered</span>
+                                <div class="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+                                    <i class="fa-solid fa-eye text-sm"></i>
+                                </div>
+                            </div>
+                            <div id="stat-views" class="text-3xl font-extrabold text-sky-400 tracking-tight">0</div>
+                            <div class="mt-2 text-[11px] text-sky-500/80 font-medium">Total views generated</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: TASK LAUNCHER -->
+                <div id="tab-tasks" class="tab-content hidden space-y-6">
+                    <div class="glass-card rounded-3xl p-6 md:p-8 shadow-2xl">
+                        <div class="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
+                            <div>
+                                <h3 class="font-bold text-lg text-white tracking-tight">New YouTube Short Campaign</h3>
+                                <p class="text-xs text-slate-400 mt-1">Configure automation variables for optimized retention rendering</p>
+                            </div>
+                            <span class="text-[11px] font-mono bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-full font-semibold">Shorts Automation Mode</span>
+                        </div>
+
+                        <form onsubmit="createTask(event)" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                
+                                <div class="md:col-span-2">
+                                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Short / Video Link</label>
+                                    <div class="relative">
+                                        <i class="fa-solid fa-link absolute left-4 top-3.5 text-slate-500 text-sm"></i>
+                                        <input type="url" id="channel_link" required placeholder="https://youtube.com/shorts/..." class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Exact Video Title</label>
+                                    <input type="text" id="video_title" required placeholder="Exact Search Query Title" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition">
+                                </div>
+
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Target Views</label>
+                                    <input type="number" id="views_required" min="1" required placeholder="e.g. 100" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition">
+                                </div>
+
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Short Total Duration (Seconds)</label>
+                                    <input type="number" id="short_duration" min="5" max="60" required placeholder="e.g. 15" oninput="calculateWatchTime()" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition">
+                                </div>
+
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Retention Target (%)</label>
+                                        <span id="calculated-seconds" class="text-xs font-mono text-red-400 font-semibold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">0s - 0s target</span>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <input type="number" id="watch_min_percentage" min="10" max="100" value="80" required placeholder="Min %" oninput="calculateWatchTime()" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition text-center font-mono">
+                                        <input type="number" id="watch_max_percentage" min="10" max="100" value="95" required placeholder="Max %" oninput="calculateWatchTime()" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition text-center font-mono">
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <div class="flex justify-end pt-6 border-t border-slate-800">
+                                <button type="submit" class="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-600 text-white px-8 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-red-600/25 flex items-center gap-2">
+                                    <i class="fa-solid fa-rocket text-xs"></i> Launch Campaign
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- TAB 3: QUEUE & TERMINAL LOGS -->
+                <div id="tab-queue" class="tab-content hidden space-y-8">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2 glass-card rounded-3xl p-6 shadow-2xl">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="font-bold text-base text-white flex items-center gap-2">
+                                    <i class="fa-solid fa-list-check text-slate-400"></i> Active Execution Queue
+                                </h3>
+                                <span class="text-xs font-mono text-slate-500">Live Sync</span>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse min-w-[500px]">
+                                    <thead>
+                                        <tr class="text-[11px] font-bold text-slate-400 border-b border-slate-800 uppercase tracking-wider">
+                                            <th class="pb-3 px-3">ID</th>
+                                            <th class="pb-3 px-3">Title</th>
+                                            <th class="pb-3 px-3 text-center">Progress</th>
+                                            <th class="pb-3 px-3 text-center">Retention Range</th>
+                                            <th class="pb-3 px-3 text-right">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="task-rows" class="divide-y divide-slate-800/60 text-xs">
+                                        <tr><td colspan="5" class="py-8 text-center text-slate-500">Loading active tasks...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="glass-card rounded-3xl p-6 shadow-2xl flex flex-col">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-base text-white flex items-center gap-2">
+                                    <i class="fa-solid fa-terminal text-sky-400"></i> Terminal Output
+                                </h3>
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            </div>
+                            <div id="terminal-logs" class="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 font-mono text-[11px] text-sky-400 flex-1 h-96 overflow-y-auto space-y-2 leading-relaxed">
+                                <div class="text-slate-600">Waiting for local bot worker stream...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 4: SETTINGS & PROFILE -->
+                <div id="tab-settings" class="tab-content hidden space-y-6">
+                    <div class="glass-card rounded-3xl p-6 md:p-8 shadow-2xl max-w-2xl">
+                        <h3 class="font-bold text-lg text-white mb-6 pb-4 border-b border-slate-800">Account Preferences</h3>
+                        <div class="space-y-5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Account ID</label>
+                                <input type="text" id="settings-user-id" disabled class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-xs font-mono text-slate-500">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Email Address</label>
+                                <input type="text" id="settings-user-email" disabled class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-300">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+<script>
+    const SUPABASE_URL = "https://zhgzdnuerrimmwyircdg.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoZ3pkbnVlcnJpbW13eWlyY2RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3MjUyMzUsImV4cCI6MjEwMzMwMTIzNX0.804LsM8OXDZvGo7XECX_vWxXJigOE9X1eLFYv8Uecfw";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let isSignUp = false;
+    let pendingEmail = "";
+    let otpTimerInterval = null;
+    let timerSeconds = 60;
+
+    function calculateWatchTime() {
+        const duration = parseFloat(document.getElementById('short_duration').value) || 0;
+        const minPct = parseFloat(document.getElementById('watch_min_percentage').value) || 0;
+        const maxPct = parseFloat(document.getElementById('watch_max_percentage').value) || 0;
+        
+        const minSecs = Math.round((duration * minPct) / 100);
+        const maxSecs = Math.round((duration * maxPct) / 100);
+        
+        document.getElementById('calculated-seconds').innerText = `${minSecs}s - ${maxSecs}s target`;
+    }
+
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        
+        const configs = {
+            success: { bg: 'bg-emerald-950/90', border: 'border-emerald-500/40', text: 'text-emerald-300', icon: 'fa-circle-check text-emerald-400' },
+            error: { bg: 'bg-red-950/90', border: 'border-red-500/40', text: 'text-red-300', icon: 'fa-circle-exclamation text-red-400' },
+            info: { bg: 'bg-sky-950/90', border: 'border-sky-500/40', text: 'text-sky-300', icon: 'fa-circle-info text-sky-400' },
+            warning: { bg: 'bg-amber-950/90', border: 'border-amber-500/40', text: 'text-amber-300', icon: 'fa-triangle-exclamation text-amber-400' }
+        };
+
+        const config = configs[type] || configs.info;
+
+        toast.className = `pointer-events-auto flex items-start gap-3 p-4 rounded-2xl border backdrop-blur-md shadow-2xl transition-all duration-300 transform translate-x-full opacity-0 ${config.bg} ${config.border} ${config.text}`;
+        toast.innerHTML = `
+            <i class="fa-solid ${config.icon} text-base mt-0.5"></i>
+            <div class="flex-1 text-xs font-medium leading-relaxed">${message}</div>
+            <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white transition">
+                <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+        `;
+
+        container.appendChild(toast);
+
+        requestAnimationFrame(() => {
+            toast.classList.remove('translate-x-full', 'opacity-0');
+        });
+
+        setTimeout(() => {
+            toast.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.tab-nav-btn').forEach(btn => {
+            btn.classList.remove('bg-slate-900', 'text-slate-100', 'border', 'border-slate-800', 'shadow-md');
+            btn.classList.add('text-slate-400');
+        });
+
+        document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+        const activeNav = document.getElementById(`nav-${tabName}`);
+        if (activeNav) {
+            activeNav.classList.add('bg-slate-900', 'text-slate-100', 'border', 'border-slate-800', 'shadow-md');
+        }
+    }
+
+    const boxes = document.querySelectorAll('.otp-box');
+    boxes.forEach((box, index) => {
+        box.addEventListener('input', (e) => {
+            if (e.target.value.length === 1 && index < boxes.length - 1) boxes[index + 1].focus();
+        });
+        box.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !box.value && index > 0) boxes[index - 1].focus();
+        });
+        box.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const pastedData = e.clipboardData.getData('text').trim();
+            pastedData.split('').forEach((char, i) => { if (boxes[i]) boxes[i].value = char; });
+            const lastIndex = Math.min(pastedData.length, boxes.length) - 1;
+            if (lastIndex >= 0) boxes[lastIndex].focus();
+        });
+    });
+
+    function getOTPValue() {
+        let code = "";
+        boxes.forEach(b => code += b.value.trim());
+        return code;
+    }
+
+    function clearOTPInputs() {
+        boxes.forEach(b => b.value = "");
+        if (boxes[0]) boxes[0].focus();
+    }
+
+    function toggleAuthMode() {
+        isSignUp = !isSignUp;
+        document.getElementById('auth-title').innerText = isSignUp ? "Create Account" : "Welcome Back";
+        document.getElementById('auth-subtitle').innerText = isSignUp ? "Register a new profile to get started" : "Enter your credentials to access your console";
+        document.getElementById('auth-submit-btn').querySelector('span').innerText = isSignUp ? "Send Verification Code" : "Login";
+        
+        document.getElementById('name-field-wrapper').classList.toggle('hidden', !isSignUp);
+        document.getElementById('confirm-password-wrapper').classList.toggle('hidden', !isSignUp);
+        
+        document.getElementById('auth-toggle-btn').innerHTML = isSignUp 
+            ? 'Already have an account? <span class="text-red-400 font-semibold">Login</span>'
+            : 'Don\'t have an account? <span class="text-red-400 font-semibold">Sign Up</span>';
+    }
+
+    function startOTPTimer() {
+        clearInterval(otpTimerInterval);
+        timerSeconds = 60;
+        document.getElementById('resend-btn').disabled = true;
+        document.getElementById('verify-btn').disabled = false;
+        
+        otpTimerInterval = setInterval(() => {
+            timerSeconds--;
+            let mins = Math.floor(timerSeconds / 60);
+            let secs = timerSeconds % 60;
+            document.getElementById('timer-display').innerText = 
+                `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+            if (timerSeconds <= 0) {
+                clearInterval(otpTimerInterval);
+                document.getElementById('timer-display').innerText = "EXPIRED";
+                document.getElementById('resend-btn').disabled = false;
+                document.getElementById('verify-btn').disabled = true;
+            }
+        }, 1000);
+    }
+
+    async function handleAuth(event) {
+        event.preventDefault();
+        const email = document.getElementById('auth-email').value;
+        const password = document.getElementById('auth-password').value;
+
+        if (isSignUp) {
+            const name = document.getElementById('auth-name').value;
+            const confirmPassword = document.getElementById('auth-confirm-password').value;
+
+            if (password !== confirmPassword) {
+                return showToast("Passwords do not match!", "error");
+            }
+
+            const { data, error } = await supabaseClient.auth.signUp({
+                email,
+                password,
+                options: { data: { full_name: name } }
+            });
+
+            if (error) {
+                showToast(error.message, "error");
+            } else {
+                pendingEmail = email;
+                document.getElementById('otp-target-email').innerText = email;
+                document.getElementById('auth-form-card').classList.add('hidden');
+                document.getElementById('otp-verify-card').classList.remove('hidden');
+                clearOTPInputs();
+                startOTPTimer();
+                showToast("Verification code sent to your email!", "info");
+            }
+        } else {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            if (error) {
+                showToast(error.message, "error");
+            } else {
+                showToast("Welcome back!", "success");
+                checkUser();
+            }
+        }
+    }
+
+    async function resendOTP() {
+        const { error } = await supabaseClient.auth.resend({
+            type: 'signup',
+            email: pendingEmail
+        });
+        if (error) {
+            showToast(error.message, "error");
+        } else {
+            showToast("A new verification code has been sent!", "success");
+            clearOTPInputs();
+            startOTPTimer();
+        }
+    }
+
+    async function verifyOTP(event) {
+        event.preventDefault();
+        const token = getOTPValue();
+
+        if (token.length < 8) {
+            return showToast("Please enter complete 8-digit OTP code.", "warning");
+        }
+
+        const { data, error } = await supabaseClient.auth.verifyOtp({
+            email: pendingEmail,
+            token: token,
+            type: 'signup'
+        });
+
+        if (error) {
+            showToast(error.message, "error");
+        } else {
+            clearInterval(otpTimerInterval);
+            showToast("Email verified successfully! Logging you in...", "success");
+            backToAuth();
+            checkUser();
+        }
+    }
+
+    function backToAuth() {
+        clearInterval(otpTimerInterval);
+        document.getElementById('otp-verify-card').classList.add('hidden');
+        document.getElementById('auth-form-card').classList.remove('hidden');
+    }
+
+    async function logout() {
+        await supabaseClient.auth.signOut();
+        showToast("Logged out successfully.", "info");
+        checkUser();
+    }
+
+    async function checkUser() {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
+            document.getElementById('app-sidebar').classList.remove('hidden');
+            document.getElementById('user-badge').classList.remove('hidden');
+            document.getElementById('user-email-display').innerText = user.email;
+            
+            document.getElementById('settings-user-id').value = user.id;
+            document.getElementById('settings-user-email').value = user.email;
+
+            const fullName = user.user_metadata?.full_name || user.email.split('@')[0];
+            document.getElementById('welcome-user-name').innerText = fullName;
+
+            switchTab('overview');
+            fetchTasks();
+            fetchLogs();
+        } else {
+            document.getElementById('auth-section').classList.remove('hidden');
+            document.getElementById('dashboard-section').classList.add('hidden');
+            document.getElementById('app-sidebar').classList.add('hidden');
+            document.getElementById('user-badge').classList.add('hidden');
+        }
+    }
+
+    async function createTask(event) {
+        event.preventDefault();
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return showToast("Session expired. Please log in again.", "error");
+
+        const duration = parseInt(document.getElementById('short_duration').value);
+        const minPct = parseInt(document.getElementById('watch_min_percentage').value);
+        const maxPct = parseInt(document.getElementById('watch_max_percentage').value);
+
+        if (minPct > maxPct) {
+            return showToast("Min percentage, Max percentage se chota hona chahiye!", "warning");
+        }
+
+        const payload = {
+            channel_link: document.getElementById('channel_link').value,
+            video_title: document.getElementById('video_title').value,
+            views_required: parseInt(document.getElementById('views_required').value),
+            video_duration: duration,
+            min_retention: minPct,
+            max_retention: maxPct,
+            views_completed: 0,
+            status: 'Pending',
+            user_id: user.id
+        };
+
+        const { error } = await supabaseClient.from('tasks').insert([payload]);
+        if (error) {
+            showToast(error.message, "error");
+        } else {
+            showToast("Short Automation launched successfully!", "success");
+            event.target.reset();
+            document.getElementById('calculated-seconds').innerText = "0s - 0s target";
+            switchTab('queue');
+            fetchTasks();
+        }
+    }
+
+    async function fetchTasks() {
+        const { data: tasks } = await supabaseClient.from('tasks').select('*').order('id', { ascending: false });
+        const tbody = document.getElementById('task-rows');
+
+        if (tasks) {
+            document.getElementById('stat-total').innerText = tasks.length;
+            document.getElementById('stat-running').innerText = tasks.filter(t => t.status === 'Running').length;
+            document.getElementById('stat-completed').innerText = tasks.filter(t => t.status === 'Completed').length;
+            document.getElementById('stat-views').innerText = tasks.reduce((acc, t) => acc + (t.views_completed || 0), 0);
+        }
+
+        if (!tasks || tasks.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-500">No active tasks found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = tasks.map(t => {
+            let statusColor = t.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                            : t.status === 'Running' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
+                            : 'bg-slate-800 text-slate-400 border-slate-700';
+            
+            let minR = t.min_retention || 80;
+            let maxR = t.max_retention || 95;
+
+            return `<tr class="hover:bg-slate-900/60 transition-colors">
+                <td class="py-3.5 px-3 font-mono text-slate-500">#${t.id}</td>
+                <td class="py-3.5 px-3 font-medium text-slate-200 max-w-[200px] truncate" title="${t.video_title}">${t.video_title}</td>
+                <td class="py-3.5 px-3 text-center text-slate-400 font-mono">${t.views_completed} / ${t.views_required}</td>
+                <td class="py-3.5 px-3 text-center text-slate-400 font-mono">${minR}% - ${maxR}%</td>
+                <td class="py-3.5 px-3 text-right"><span class="px-2.5 py-1 text-[10px] font-bold rounded-full border uppercase tracking-wider ${statusColor}">${t.status}</span></td>
+            </tr>`;
+        }).join('');
+    }
+
+    async function fetchLogs() {
+        const { data: logs } = await supabaseClient.from('bot_logs').select('*').order('id', { ascending: false }).limit(20);
+        const terminal = document.getElementById('terminal-logs');
+        if (logs && logs.length > 0) {
+            terminal.innerHTML = logs.map(l => `<div class="leading-relaxed"><span class="text-slate-600">[${new Date(l.created_at).toLocaleTimeString()}]</span> <span class="text-slate-400">Task #${l.task_id}:</span> ${l.message}</div>`).join('');
+        }
+    }
+
+    setInterval(() => {
+        if (!document.getElementById('dashboard-section').classList.contains('hidden')) {
+            fetchTasks();
+            fetchLogs();
+        }
+    }, 3000);
+
+    checkUser();
+</script>
+</body>
+</html>
